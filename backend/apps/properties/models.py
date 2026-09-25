@@ -150,7 +150,12 @@ class PropertyImage(TimeStampedModel):
     """
 
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="images")
-    image = models.ImageField(upload_to="property_images/")
+    image = models.ImageField(upload_to="property_images/", blank=True)
+    external_url = models.URLField(
+        max_length=1000,
+        blank=True,
+        help_text="Image hosted by the source (used for ingested listings instead of copying the file).",
+    )
     display_authorized = models.BooleanField(
         default=False, help_text="Must be explicitly true before this image is served publicly."
     )

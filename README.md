@@ -204,6 +204,25 @@ Sources, Verification (checks + regulatory records), Leads, Live Viewing,
 Users, Audit Log all register there with list filters/actions matching the
 verification-queue and stale-listing workflows described in the spec.
 
+### Search: our listings + the wider web
+
+A search shows two sections:
+
+1. **Our listings** (`/api/properties/`) — from the database, filled by
+   **ingestion** (`apps/sources/ingestion/`). Each authorized
+   `PropertySource` with an `adapter` is synced nightly at 02:00 by Celery
+   beat (`celery-beat` service): new listings are added, changed prices go to
+   `PriceHistory`, listings gone from the source are marked `STALE`. The
+   PropertySpot source is created by a migration. Sync by hand with
+   `python manage.py sync_sources` or the "Sync listings now" admin action.
+   Add a new source by writing a `SourceAdapter` and registering it in
+   `apps/sources/ingestion/__init__.py`.
+2. **More results from the web** (`/api/web-search/`) — live Brave Search
+   results plus phone/email/WhatsApp found on each page, always labelled
+   *Not verified*. Set `BRAVE_SEARCH_API_KEY` in `backend/.env` to turn it
+   on; without a key the section is simply hidden. Results are cached for an
+   hour to save quota.
+
 ## 5. What to wire up next (explicitly out of scope here)
 
 1. **Real ingestion connectors** — one Celery task per `PropertySource`

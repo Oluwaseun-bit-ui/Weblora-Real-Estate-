@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.agencies.serializers import AgencyMinimalSerializer
+from apps.agencies.serializers import AgencyMinimalSerializer, AgencyPublicSerializer
 
 from .models import Property, PropertyImage
 
@@ -15,6 +15,8 @@ class PropertyImageSerializer(serializers.ModelSerializer):
     def get_image_url(self, obj):
         if not obj.display_authorized:
             return None
+        if not obj.image:
+            return obj.external_url or None
         request = self.context.get("request")
         url = obj.image.url
         return request.build_absolute_uri(url) if request else url
@@ -65,6 +67,9 @@ class PropertyListSerializer(serializers.ModelSerializer):
 class PropertyDetailSerializer(PropertyListSerializer):
     """Full representation for the property detail page."""
 
+    # Full public agency info (phone/email/WhatsApp/website) so the detail
+    # page can show contact buttons; search results keep the minimal form.
+    agency = AgencyPublicSerializer(read_only=True)
     images = serializers.SerializerMethodField()
     source_name = serializers.SerializerMethodField()
 

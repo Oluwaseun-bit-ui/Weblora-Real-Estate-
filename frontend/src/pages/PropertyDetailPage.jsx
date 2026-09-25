@@ -194,7 +194,19 @@ export default function PropertyDetailPage() {
           </button>
         </div>
 
-        {property.source_name && <p className="hint">Source: {property.source_name}</p>}
+        {property.source_name && (
+          <p className="hint">
+            Source: {property.source_name}
+            {property.source_url && (
+              <>
+                {" · "}
+                <a href={property.source_url} target="_blank" rel="noreferrer noopener">
+                  View original listing
+                </a>
+              </>
+            )}
+          </p>
+        )}
 
         {tab === "live_viewing" && <LiveViewingRequestForm property={property} />}
         {tab === "enquiry" && <EnquiryForm property={property} />}

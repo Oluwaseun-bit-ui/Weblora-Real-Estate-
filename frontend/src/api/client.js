@@ -15,13 +15,16 @@ async function request(path, options = {}) {
   return data;
 }
 
+function toQueryString(params) {
+  const qs = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== "" && v !== undefined && v !== null)
+  ).toString();
+  return qs ? `?${qs}` : "";
+}
+
 export const api = {
-  searchProperties: (params) => {
-    const qs = new URLSearchParams(
-      Object.entries(params).filter(([, v]) => v !== "" && v !== undefined && v !== null)
-    ).toString();
-    return request(`/properties/${qs ? `?${qs}` : ""}`);
-  },
+  searchProperties: (params) => request(`/properties/${toQueryString(params)}`),
+  searchWeb: (params) => request(`/web-search/${toQueryString(params)}`),
   getProperty: (id) => request(`/properties/${id}/`),
   getAgency: (slug) => request(`/agencies/${slug}/`),
   submitLead: (payload) =>

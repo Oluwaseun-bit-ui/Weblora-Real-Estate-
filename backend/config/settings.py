@@ -6,6 +6,7 @@ architecture is easy to audit. Secrets are read from environment variables /
 .env (via python-decouple) and never committed.
 """
 from pathlib import Path
+from celery.schedules import crontab
 from decouple import config, Csv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
     "apps.verification",
     "apps.leads",
     "apps.live_viewing",
+    "apps.web_search",
 ]
 
 MIDDLEWARE = [
@@ -152,6 +154,7 @@ REST_FRAMEWORK = {
         "user": "300/min",
         "lead_submit": "10/min",
         "live_viewing_request": "20/min",
+        "web_search": "20/min",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
@@ -167,6 +170,19 @@ CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://localhost:6379/
 CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default="redis://localhost:6379/1")
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_ALWAYS_EAGER = config("CELERY_TASK_ALWAYS_EAGER", default=DEBUG, cast=bool)
+CELERY_BEAT_SCHEDULE = {
+    # Each source's own sync_frequency_minutes (default daily) decides
+    # whether it's actually due; this just wakes the checker up.
+    "sync-due-sources": {
+        "task": "apps.sources.tasks.sync_due_sources_task",
+        "schedule": crontab(minute=0, hour=2),
+    },
+}
+
+# --- Web search (Option A: live results from the wider web) ---------------
+BRAVE_SEARCH_API_KEY = config("BRAVE_SEARCH_API_KEY", default="")
+WEB_SEARCH_RESULT_COUNT = config("WEB_SEARCH_RESULT_COUNT", default=10, cast=int)
+WEB_SEARCH_CACHE_SECONDS = config("WEB_SEARCH_CACHE_SECONDS", default=60 * 60, cast=int)
 
 # --- Email --------------------------------------------------------------
 EMAIL_BACKEND = config("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")

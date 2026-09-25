@@ -29,6 +29,14 @@ services:
     env_file: ./backend/.env
     depends_on: [db, redis]
 
+  celery-beat:
+    # Wakes up nightly (02:00 Lagos) to sync listings from authorized sources.
+    build: ./backend
+    command: celery -A config beat -l info
+    volumes: ["./backend:/app"]
+    env_file: ./backend/.env
+    depends_on: [db, redis]
+
   frontend:
     build: ./frontend
     command: npm run dev -- --host

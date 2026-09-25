@@ -14,6 +14,7 @@ urlpatterns = [
     path("api/leads/", include("apps.leads.urls")),
     path("api/live-viewing/", include("apps.live_viewing.urls")),
     path("api/config/", include("apps.core.urls")),
+    path("api/web-search/", include("apps.web_search.urls")),
 ]
 
 if settings.DEBUG:

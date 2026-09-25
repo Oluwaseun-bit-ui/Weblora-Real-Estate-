@@ -69,6 +69,11 @@ class Agency(TimeStampedModel):
     website_status = models.CharField(max_length=20, choices=WebsiteStatus.choices, default=WebsiteStatus.NOT_PROVIDED)
 
     sources = models.ManyToManyField(PropertySource, related_name="agencies", blank=True)
+    source_agency_id = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="The agency's/agent's ID on the source it was ingested from, used to avoid duplicates on re-sync.",
+    )
 
     is_suspended = models.BooleanField(default=False)
     suspension_reason = models.TextField(blank=True)

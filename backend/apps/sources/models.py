@@ -51,6 +51,18 @@ class PropertySource(TimeStampedModel):
     )
     contact_email = models.EmailField(blank=True, help_text="Contact at the source for partnership/authorization matters.")
 
+    class Adapter(models.TextChoices):
+        NONE = "", "None (manual entry only)"
+        PROPERTYSPOT = "propertyspot", "PropertySpot public listings API"
+
+    adapter = models.CharField(
+        max_length=32,
+        choices=Adapter.choices,
+        blank=True,
+        default=Adapter.NONE,
+        help_text="Which ingestion adapter (apps/sources/ingestion) syncs this source. Blank = manual entry only.",
+    )
+
     is_active = models.BooleanField(default=False)
     last_synced_at = models.DateTimeField(null=True, blank=True)
     next_sync_at = models.DateTimeField(null=True, blank=True)
