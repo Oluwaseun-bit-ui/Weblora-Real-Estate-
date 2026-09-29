@@ -196,6 +196,15 @@ npm run dev
 
 Or via Docker: `docker compose up --build` (after filling in `backend/.env`).
 
+No Docker Desktop? Use [Colima](https://github.com/abiosoft/colima) (free,
+command-line only) on macOS:
+
+```bash
+brew install colima docker docker-compose
+colima start                       # once per boot
+docker compose up -d db redis      # Postgres on localhost:5433, Redis on 6379
+```
+
 Run tests: `cd backend && pytest` (needs a Postgres instance reachable per
 `.env`; `pytest-django` + `factory-boy` are already in `requirements.txt`).
 
