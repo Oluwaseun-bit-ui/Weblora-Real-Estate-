@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.sources.models import PropertySource
-from apps.sources.services import sync_source
+from apps.sources.services import expire_old_listings, sync_source
 
 
 class Command(BaseCommand):
@@ -25,6 +25,11 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS(
                     f"{source.name}: {result.created} new, {result.updated} updated, "
-                    f"{result.marked_stale} marked stale, {result.agencies_created} new agents, {result.errors} errors"
+                    f"{result.marked_stale} marked stale, {result.expired} hidden as older than the age limit, "
+                    f"{result.agencies_created} new agents, {result.errors} errors"
                 )
             )
+
+        expired = expire_old_listings()
+        if expired:
+            self.stdout.write(f"Hid {expired} other listings older than the age limit.")

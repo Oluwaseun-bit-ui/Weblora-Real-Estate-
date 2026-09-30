@@ -83,6 +83,12 @@ class Property(TimeStampedModel):
     status = models.CharField(max_length=20, choices=ListingStatus.choices, default=ListingStatus.PENDING_REVIEW)
     verification_status = models.CharField(max_length=30, choices=VerificationStatus.choices, default=VerificationStatus.AGENCY_PROVIDED)
     discovered_at = models.DateTimeField(auto_now_add=True)
+    listed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the listing was first posted (on the source, for ingested listings). Listings older than "
+        "LISTING_MAX_AGE_DAYS are hidden as stale; set this to today to renew a listing the agent has re-confirmed.",
+    )
     last_checked_at = models.DateTimeField(null=True, blank=True, help_text="Last time we actively re-confirmed this listing.")
     last_seen_at = models.DateTimeField(null=True, blank=True, help_text="Last time the source still showed this listing as available.")
 

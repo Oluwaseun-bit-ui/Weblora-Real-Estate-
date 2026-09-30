@@ -15,6 +15,7 @@ import time
 from decimal import Decimal, InvalidOperation
 
 import requests
+from django.utils.dateparse import parse_datetime
 
 from .base import AgencyRecord, ListingRecord, SourceAdapter
 
@@ -124,6 +125,7 @@ def parse_listing(item, purpose) -> ListingRecord:
         amenities=amenities,
         image_urls=images,
         is_available=item.get("status") == "available",
+        listed_at=parse_datetime(item["created_at"]) if item.get("created_at") else None,
         source_url=f"{SITE_BASE}single-property.html?id={item['id']}",
     )
 

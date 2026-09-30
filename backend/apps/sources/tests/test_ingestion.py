@@ -1,14 +1,17 @@
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from django.utils import timezone
+from rest_framework.test import APIClient
 
 from apps.agencies.models import Agency
-from apps.core.factories import PropertySourceFactory
+from apps.core.factories import PropertyFactory, PropertySourceFactory
 from apps.properties.models import PriceHistory, Property
 from apps.sources.ingestion.base import SourceAdapter
 from apps.sources.ingestion.propertyspot import parse_agent, parse_listing
 from apps.sources.models import PropertySource
-from apps.sources.services import sync_source
+from apps.sources.services import expire_old_listings, sync_source
 
 pytestmark = pytest.mark.django_db
 
@@ -144,3 +147,44 @@ class TestSyncSource:
         source.refresh_from_db()
         with pytest.raises(ValueError):
             sync_source(source, FakeAdapter(source, []))
+
+
+class TestListingAgeLimit:
+    OLD = "2025-01-01T10:00:00.000000Z"
+
+    def test_parse_listing_reads_posting_date(self):
+        rec = parse_listing({**PROPERTYSPOT_ITEM, "created_at": "2026-09-23T06:48:52.000000Z"}, "rent")
+        assert rec.listed_at.isoformat() == "2026-09-23T06:48:52+00:00"
+
+    def test_listing_older_than_limit_is_hidden(self):
+        source = _source()
+        fresh = parse_listing({**PROPERTYSPOT_ITEM, "id": 1, "created_at": timezone.now().isoformat()}, "rent")
+        old = parse_listing({**PROPERTYSPOT_ITEM, "id": 2, "created_at": self.OLD}, "rent")
+        result = sync_source(source, FakeAdapter(source, [fresh, old]))
+
+        assert result.expired == 1
+        assert Property.objects.get(source_property_id="1").status == Property.ListingStatus.ACTIVE
+        assert Property.objects.get(source_property_id="2").status == Property.ListingStatus.STALE
+        resp = APIClient().get("/api/properties/")
+        assert [p["title"] for p in resp.data["results"]] == [fresh.title]
+
+    def test_admin_renewal_survives_resync(self):
+        source = _source()
+        old = parse_listing({**PROPERTYSPOT_ITEM, "created_at": self.OLD}, "rent")
+        sync_source(source, FakeAdapter(source, [old]))
+        Property.objects.update(listed_at=timezone.now(), status=Property.ListingStatus.ACTIVE)  # "Mark active"
+        sync_source(source, FakeAdapter(source, [old]))
+
+        assert Property.objects.get().status == Property.ListingStatus.ACTIVE
+
+    def test_expire_old_listings_covers_manual_entries(self, settings):
+        settings.LISTING_MAX_AGE_DAYS = 90
+        old = PropertyFactory(listed_at=timezone.now() - timedelta(days=91))
+        undated_old = PropertyFactory()
+        Property.objects.filter(pk=undated_old.pk).update(discovered_at=timezone.now() - timedelta(days=120))
+        recent = PropertyFactory(listed_at=timezone.now() - timedelta(days=10))
+
+        assert expire_old_listings() == 2
+        statuses = dict(Property.objects.values_list("pk", "status"))
+        assert statuses[old.pk] == statuses[undated_old.pk] == Property.ListingStatus.STALE
+        assert statuses[recent.pk] == Property.ListingStatus.ACTIVE

@@ -8,6 +8,7 @@ apps.sources.services.sync_source, so adding a new source never touches
 those rules.
 """
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 from typing import Iterator, Optional
 
@@ -33,6 +34,7 @@ class ListingRecord:
     price: Decimal
     source_url: str
     is_available: bool = True
+    listed_at: Optional[datetime] = None  # when the source says it was first posted
     description: str = ""
     currency: str = "NGN"
     price_period: str = ""

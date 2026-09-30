@@ -45,6 +45,7 @@ class PropertyAdmin(admin.ModelAdmin):
         "status",
         "verification_status",
         "agency",
+        "listed_at",
         "last_seen_at",
     )
     list_filter = (StaleListingFilter, "status", "verification_status", "property_type", "transaction_type", "state")
@@ -68,10 +69,11 @@ class PropertyAdmin(admin.ModelAdmin):
     def mark_stale(self, request, queryset):
         queryset.update(status=Property.ListingStatus.STALE)
 
-    @admin.action(description="Mark selected properties as ACTIVE (confirmed available)")
+    @admin.action(description="Mark selected properties as ACTIVE (confirmed available; renews the 90-day age limit)")
     def mark_active(self, request, queryset):
+        # Also renews listed_at so the listing isn't re-hidden by the age limit.
         now = timezone.now()
-        queryset.update(status=Property.ListingStatus.ACTIVE, last_checked_at=now, last_seen_at=now)
+        queryset.update(status=Property.ListingStatus.ACTIVE, last_checked_at=now, last_seen_at=now, listed_at=now)
 
     @admin.action(description="Mark selected properties as REMOVED")
     def mark_removed(self, request, queryset):

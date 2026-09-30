@@ -11,13 +11,17 @@ Rules enforced here (not in adapters):
 - A listing that disappears from a *complete* sync is marked STALE (not
   deleted); if it reappears later it goes back to ACTIVE.
 - Price changes are recorded in PriceHistory.
+- Listings first posted more than LISTING_MAX_AGE_DAYS ago are kept STALE
+  (hidden from search) even if the source still shows them.
 """
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
 
 import requests
+from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.agencies.models import Agency
@@ -39,6 +43,25 @@ class SyncResult:
     marked_stale: int = 0
     agencies_created: int = 0
     errors: int = 0
+    expired: int = 0
+
+
+def listing_age_cutoff():
+    return timezone.now() - timedelta(days=settings.LISTING_MAX_AGE_DAYS)
+
+
+def expire_old_listings() -> int:
+    """
+    Hide ACTIVE listings (from any source, including manual entry) first
+    posted before the cutoff. Listings without a posting date fall back to
+    when we discovered them.
+    """
+    cutoff = listing_age_cutoff()
+    return (
+        Property.objects.filter(status=Property.ListingStatus.ACTIVE)
+        .filter(Q(listed_at__lt=cutoff) | Q(listed_at__isnull=True, discovered_at__lt=cutoff))
+        .update(status=Property.ListingStatus.STALE, verification_status=Property.VerificationStatus.STALE)
+    )
 
 
 def _contact_status(value, current):
@@ -115,8 +138,21 @@ def upsert_listing(source, adapter, record, result, agency_cache):
         "amenities", "source_url",
     ):
         setattr(prop, field, getattr(record, field))
-    prop.status = Property.ListingStatus.ACTIVE if record.is_available else Property.ListingStatus.REMOVED
-    prop.verification_status = Property.VerificationStatus.SOURCE_CONFIRMED
+    # Keep the later date so an admin "renewal" (listed_at set to today)
+    # survives re-syncs instead of being reset to the source's post date.
+    if record.listed_at and (prop.listed_at is None or record.listed_at > prop.listed_at):
+        prop.listed_at = record.listed_at
+    too_old = prop.listed_at is not None and prop.listed_at < listing_age_cutoff()
+    if not record.is_available:
+        prop.status = Property.ListingStatus.REMOVED
+    elif too_old:
+        prop.status = Property.ListingStatus.STALE
+        result.expired += 1
+    else:
+        prop.status = Property.ListingStatus.ACTIVE
+    prop.verification_status = (
+        Property.VerificationStatus.STALE if too_old else Property.VerificationStatus.SOURCE_CONFIRMED
+    )
     prop.last_seen_at = now
     prop.last_checked_at = now
     prop.save()
@@ -180,4 +216,7 @@ def sync_due_sources():
             results[source.name] = sync_source(source)
         except Exception:
             logger.exception("Sync failed for source %s", source.name)
+    expired = expire_old_listings()
+    if expired:
+        logger.info("Hid %s listings older than %s days", expired, settings.LISTING_MAX_AGE_DAYS)
     return results

@@ -184,6 +184,12 @@ BRAVE_SEARCH_API_KEY = config("BRAVE_SEARCH_API_KEY", default="")
 WEB_SEARCH_RESULT_COUNT = config("WEB_SEARCH_RESULT_COUNT", default=10, cast=int)
 WEB_SEARCH_CACHE_SECONDS = config("WEB_SEARCH_CACHE_SECONDS", default=60 * 60, cast=int)
 
+# --- Listing freshness --------------------------------------------------------
+# Listings first posted more than this many days ago are hidden (marked STALE)
+# even if the source still shows them, because old Lagos listings are very
+# often already let/sold. Renew one by setting its listed_at to today.
+LISTING_MAX_AGE_DAYS = config("LISTING_MAX_AGE_DAYS", default=90, cast=int)
+
 # --- Email --------------------------------------------------------------
 EMAIL_BACKEND = config("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 EMAIL_HOST = config("EMAIL_HOST", default="")
