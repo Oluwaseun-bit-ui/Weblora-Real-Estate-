@@ -222,7 +222,11 @@ A search shows two sections:
    `PropertySource` with an `adapter` is synced nightly at 02:00 by Celery
    beat (`celery-beat` service): new listings are added, changed prices go to
    `PriceHistory`, listings gone from the source are marked `STALE`. The
-   PropertySpot source is created by a migration. Sync by hand with
+   PropertySpot source is created by a migration. On a Mac without
+   Celery running, `bash scripts/install-nightly-sync.sh` schedules the same
+   nightly sync with launchd (keep the project outside Downloads/Desktop/
+   Documents, which macOS blocks for background jobs). Listings first posted
+   more than `LISTING_MAX_AGE_DAYS` (90) days ago are hidden. Sync by hand with
    `python manage.py sync_sources` or the "Sync listings now" admin action.
    Add a new source by writing a `SourceAdapter` and registering it in
    `apps/sources/ingestion/__init__.py`.
